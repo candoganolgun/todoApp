@@ -1,0 +1,32 @@
+# docker-compose.yml
+services:
+  backend:
+    build: 
+      context: ./rust
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    volumes:
+      - todo-data:/app/data
+    networks:
+      - app-network
+
+  frontend:
+    build:
+      context: ./react
+      dockerfile: Dockerfile
+    ports:
+      - "5173:5173"
+    environment:
+      - VITE_BACKEND_URL=http://backend:8080
+    depends_on:
+      - backend
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge
+
+volumes:
+  todo-data:

@@ -97,6 +97,19 @@ const DroppableColumn = ({ status, todos, updateTodoStatus, onDelete }) => {
   );
 };
 
+
+// API base URL'ini çevre değişkeninden al
+const API_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:8080';
+
+// axios instance oluştur
+const api = axios.create({
+  baseURL: API_URL,
+  headers: {
+    'Content-Type': 'application/json',
+  }
+});
+
+
 // Ana uygulama bileşeni
 const App = () => {
   // State tanımlamaları
@@ -112,12 +125,12 @@ const App = () => {
   // Todo'ları backend'den getiren fonksiyon
   const fetchTodos = async () => {
     try {
-      const response = await axios.get("http://127.0.0.1:8080/todos");
+      const response = await api.get("/todos");
       setTodos(response.data);
       setError(null);
     } catch (err) {
-      setError("Failed to fetch todos");
-      console.error(err);
+      setError("Failed to fetch todos: " + err.message);
+      console.error("Fetch error:", err);
     }
   };
 
@@ -125,12 +138,12 @@ const App = () => {
   const addTodo = async () => {
     if (newTodo.trim()) {
       try {
-        await axios.post("http://127.0.0.1:8080/todos", { title: newTodo });
+        await api.post("/todos", { title: newTodo });
         setNewTodo("");
         fetchTodos();
         setError(null);
       } catch (err) {
-        setError("Failed to add todo");
+        setError("Failed to add todo: " + err.message);
         console.error(err);
       }
     }
@@ -174,7 +187,7 @@ const App = () => {
   return (
     <DndProvider backend={HTML5Backend}>
       <div style={{ padding: "20px" }}>
-        <h1>To-Do App</h1>
+        <h1>ToDo App</h1>
         {/* Todo ekleme formu */}
         <div style={{ marginBottom: "10px" }}>
           <input
