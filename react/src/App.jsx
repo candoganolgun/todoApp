@@ -99,16 +99,50 @@ const DroppableColumn = ({ status, todos, updateTodoStatus, onDelete }) => {
 
 
 // API base URL'ini çevre değişkeninden al
-const API_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:8080';
+const API_URL = 'http://localhost:8080';  // Direkt olarak URL'i belirtelim
+
+console.log('Backend URL:', API_URL); // Debug için URL'i loglayalım
 
 // axios instance oluştur
 const api = axios.create({
   baseURL: API_URL,
   headers: {
     'Content-Type': 'application/json',
-  }
+    'Accept': 'application/json',
+  },
+    // timeout değeri ekleyelim
+    timeout: 5000,
+    withCredentials: true
 });
 
+
+// Debug için request interceptor
+api.interceptors.request.use(request => {
+  console.log('Starting Request:', {
+    url: request.url,
+    method: request.method,
+    baseURL: request.baseURL,
+    headers: request.headers
+  });
+  return request;
+});
+
+// Debug için response interceptor
+api.interceptors.response.use(
+  response => {
+    console.log('Response:', response);
+    return response;
+  },
+  error => {
+    console.error('API Error Details:', {
+      message: error.message,
+      code: error.code,
+      config: error.config,
+      response: error.response
+    });
+    throw error;
+  }
+);
 
 // Ana uygulama bileşeni
 const App = () => {
@@ -125,12 +159,14 @@ const App = () => {
   // Todo'ları backend'den getiren fonksiyon
   const fetchTodos = async () => {
     try {
+      console.log('Fetching todos from:', API_URL + '/todos'); // Debug log
       const response = await api.get("/todos");
       setTodos(response.data);
       setError(null);
     } catch (err) {
-      setError("Failed to fetch todos: " + err.message);
-      console.error("Fetch error:", err);
+      const errorMessage = `Failed to fetch todos: ${err.message}`;
+      console.error(errorMessage, err);
+      setError(errorMessage);
     }
   };
 
@@ -152,7 +188,7 @@ const App = () => {
   // Todo durumunu güncelleme fonksiyonu
   const updateTodoStatus = async (id, status) => {
     try {
-      await axios.put(`http://127.0.0.1:8080/todos/${id}`, { status });
+      await api.put(`http://127.0.0.1:8080/todos/${id}`, { status });
       fetchTodos();
       setError(null);
     } catch (err) {
@@ -164,7 +200,7 @@ const App = () => {
   // Yeni eklenen silme fonksiyonu
   const deleteTodo = async (id) => {
     try {
-      await axios.delete(`http://127.0.0.1:8080/todos/${id}`);
+      await api.delete(`http://127.0.0.1:8080/todos/${id}`);
       fetchTodos();
       setError(null);
     } catch (err) {

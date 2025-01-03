@@ -1,26 +1,41 @@
-# docker-compose.yml
+version: '3.8'
+
 services:
   backend:
     build: 
       context: ./rust
       dockerfile: Dockerfile
+    container_name: todo-backend
     ports:
       - "8080:8080"
     volumes:
       - todo-data:/app/data
     networks:
       - app-network
+    environment:
+      - RUST_LOG=debug
+    # Health check ekleyelim
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/todos"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
   frontend:
     build:
       context: ./react
       dockerfile: Dockerfile
+    container_name: todo-frontend
     ports:
       - "5173:5173"
     environment:
-      - VITE_BACKEND_URL=http://backend:8080
+      - VITE_BACKEND_URL=http://localhost:8080
+    volumes:
+      - ./react:/app
+      - /app/node_modules
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
     networks:
       - app-network
 

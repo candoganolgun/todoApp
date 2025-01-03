@@ -108,10 +108,15 @@ async fn main() -> std::io::Result<()> {
     HttpServer::new(move || {
         // CORS ayarlarını yapılandır - tüm origins, methods ve headers'a izin ver
         let cors = Cors::default()
-            .allowed_origin("http://localhost:5173")
-            .allowed_methods(vec!["GET", "POST", "PUT", "DELETE"])
-            .allowed_headers(vec![header::AUTHORIZATION, header::ACCEPT, header::CONTENT_TYPE])
-            .max_age(3600);
+        .allowed_origin("http://localhost:5173")
+        .allowed_methods(vec!["GET", "POST", "PUT", "DELETE"])
+        .allowed_headers(vec![
+            header::CONTENT_TYPE,
+            header::ACCEPT,
+            header::ORIGIN,
+        ])
+        .supports_credentials()
+        .max_age(3600);
 
         App::new()
             .wrap(cors)
@@ -127,7 +132,7 @@ async fn main() -> std::io::Result<()> {
                     .route("/{id}", web::delete().to(delete_todo)) // Todo'yu sil
             )
     })
-    .bind("127.0.0.1:8080")? // Sunucuyu localhost:8080'e bağla
+    .bind("0.0.0.0:8080")? // Sunucuyu localhost:8080'e bağla
     .run()
     .await
 }
