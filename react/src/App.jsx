@@ -27,12 +27,16 @@ const DraggableTodo = ({ todo, index, onDelete }) => {
         margin: "10px 0",
         border: "2px solid #ccc",
         borderRadius: "7px",
-        background: "#fff",
+        background: todo.status === "completed" ? "rgba(44, 122, 61, 0.9)" : todo.status === "in_progress" ? "rgba(240, 222, 64, 0.9)" : "rgba(222, 175, 228, 0.8)", // Duruma göre task arkaplan renk değişimi
         opacity: isDragging ? 0.8 : 1,  // Sürükleme sırasında opaklık değişimi
         cursor: "move",
         display: "flex",
         justifyContent: "space-between",
-        alignItems: "center"
+        alignItems: "center",
+        color: "#333",
+        color: todo.status === "completed" ? "rgba(255, 255, 255)" : "rgba(0, 0, 0, 0.8)", // Task durumuna göre task yazı rengi değişimi
+        fontStyle: todo.status === "completed" ? "italic" : "normal", // Task durumuna göre task yazı stili değişimi
+        fontWeight: "bold",
       }}
     >
   <span>{todo.title}</span>
@@ -49,7 +53,7 @@ const DraggableTodo = ({ todo, index, onDelete }) => {
           fontSize: "12px"
         }}
       >
-        Sil
+        Delete
       </button>
     </div>
   );
@@ -223,7 +227,7 @@ const App = () => {
   return (
     <DndProvider backend={HTML5Backend}>
       <div style={{ padding: "20px" }}>
-        <h1>ToDo App</h1>
+        <h1><b>ToDo App</b></h1>
         {/* Todo ekleme formu */}
         <div style={{ marginBottom: "10px" }}>
           <input
@@ -244,9 +248,10 @@ const App = () => {
               padding: "8px 16px",
               borderRadius: "4px",
               border: "none",
-              backgroundColor: "#007bff",
+              backgroundColor: "#f3db06",
               color: "white",
-              cursor: "pointer"
+              cursor: "pointer",
+              hover: "background-color:#f000"
             }}
           >
             Add
@@ -265,7 +270,8 @@ const App = () => {
           display: "flex", 
           justifyContent: "space-around",
           gap: "20px",
-          flexWrap: "wrap"
+          flexWrap: "wrap",
+          opacity: 0.8,
         }}>
           {/* Her durum için bir kolon oluşturma */}
           {["todo", "in_progress", "completed"].map((status) => (
