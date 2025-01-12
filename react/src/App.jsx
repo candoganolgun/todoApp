@@ -1,7 +1,64 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import axios from "axios";  // HTTP istekleri için
 import { DndProvider, useDrag, useDrop } from "react-dnd";  // Sürükle-bırak işlevselliği için
 import { HTML5Backend } from "react-dnd-html5-backend";
+import { Play, Pause } from "lucide-react"; // Müzik kontrol ikonları için
+
+// Müzik kontrolü bileşeni - START
+const MusicControls = () => {
+  const [isPlaying, setIsPlaying] = useState(false);
+  const audioRef = useRef(null);
+
+  useEffect(() => {
+    // Audio nesnesini oluştur
+    audioRef.current = new Audio("/music/background.mp3");
+    const audio = audioRef.current;
+    audio.loop = true; // Müziği döngüye al
+
+    return () => {
+      audio.pause();
+      audio.currentTime = 0;
+    };
+  }, []);
+
+  const togglePlay = () => {
+    if (isPlaying) {
+      audioRef.current.pause();
+    } else {
+      audioRef.current.play();
+    }
+    setIsPlaying(!isPlaying);
+  };
+
+  return (
+    <div style={{
+      position: "fixed",
+      top: "20px",
+      right: "20px",
+      zIndex: 1000,
+      display: "flex",
+      gap: "10px"
+    }}>
+      <button
+        onClick={togglePlay}
+        style={{
+          background: "none",
+          border: "none",
+          cursor: "pointer",
+          padding: "8px",
+          borderRadius: "50%",
+          backgroundColor: "#f3db06",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center"
+        }}
+      >
+        {isPlaying ? <Pause size={24} color="white" /> : <Play size={24} color="white" />}
+      </button>
+    </div>
+  );
+};
+// Müzik kontrolü bileşeni - FINISH
 
 // Sürükle-bırak için sabit tip tanımı
 const ItemType = {
@@ -227,6 +284,7 @@ const App = () => {
   return (
     <DndProvider backend={HTML5Backend}>
       <div style={{ padding: "20px" }}>
+      <MusicControls /> {/* Müzik kontrollerini ekle */}
         <h1><b>ToDo App</b></h1>
         {/* Todo ekleme formu */}
         <div style={{ marginBottom: "10px" }}>
