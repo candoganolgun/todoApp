@@ -3,6 +3,7 @@ import axios from "axios";  // HTTP istekleri için
 import { DndProvider, useDrag, useDrop } from "react-dnd";  // Sürükle-bırak işlevselliği için
 import { HTML5Backend } from "react-dnd-html5-backend";
 import { Play, Pause } from "lucide-react"; // Müzik kontrol ikonları için
+import { memo } from "react"; // Performans için bileşen memoization. Props değişmediğinde yeniden render yapmaz.
 
 // Müzik kontrolü bileşeni
 // Bu bileşen, sürekli çalan bir melodi için play/pause kontrolü sağlar
@@ -87,12 +88,13 @@ const MusicControls = () => {
           padding: "8px",
           borderRadius: "4px",
           border: "1px solid #ccc",
-          backgroundColor: "white",
+          backgroundColor: "black",
+          color: "white",
           cursor: "pointer"
         }}
       >
-        <option value="sabit">Sabit Müzik</option>
-        <option value="yaratim">Yaratım Müzik</option>
+        <option value="sabit" selected>Interseller</option>
+        <option value="yaratim">Black Hole</option>
       </select>
       <button
         onClick={togglePlay}
@@ -403,4 +405,4 @@ const App = () => {
   );
 };
 
-export default App;
+export default memo(App);
