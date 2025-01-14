@@ -4,31 +4,71 @@ import { DndProvider, useDrag, useDrop } from "react-dnd";  // Sürükle-bırak 
 import { HTML5Backend } from "react-dnd-html5-backend";
 import { Play, Pause } from "lucide-react"; // Müzik kontrol ikonları için
 
-// Müzik kontrolü bileşeni - START
+// Müzik kontrolü bileşeni
+// Bu bileşen, sürekli çalan bir melodi için play/pause kontrolü sağlar
 const MusicControls = () => {
+  // Çalma durumunu takip eden state
   const [isPlaying, setIsPlaying] = useState(false);
+  const [musicType, setMusicType] = useState('sabit'); // 'sabit' veya 'yaratim'
+  // Audio elementi için referans - component yeniden render olsa bile korunur
   const audioRef = useRef(null);
 
   useEffect(() => {
-    // Audio nesnesini oluştur
-    audioRef.current = new Audio("/music/background.mp3");
-    const audio = audioRef.current;
-    audio.loop = true; // Müziği döngüye al
-
-    return () => {
-      audio.pause();
-      audio.currentTime = 0;
-    };
-  }, []);
-
-  const togglePlay = () => {
-    if (isPlaying) {
-      audioRef.current.pause();
-    } else {
-      audioRef.current.play();
+    // Component mount edildiğinde audio elementi oluştur
+    if (!audioRef.current) {
+      const audio = new Audio();
+      audio.loop = true;  // Ses dosyası bittiğinde otomatik olarak tekrar başlar
+      audioRef.current = audio;
+      
+      // Hata durumlarını yakala ve kullanıcıya bildir
+      audio.addEventListener('error', (e) => {
+        console.error('Audio error:', e);
+        setIsPlaying(false);  // Hata durumunda çalma durumunu sıfırla
+      });
     }
-    setIsPlaying(!isPlaying);
+    
+    // Component unmount edildiğinde cleanup yap
+    return () => {
+      const audio = audioRef.current;
+      if (audio) {
+        audio.pause();  // Sesi durdur
+        audio.src = ''; // Kaynağı temizle
+      }
+    };
+  }, []); // Boş dependency array ile sadece mount/unmount'ta çalışır
+
+  // Play/Pause düğmesine tıklandığında çağrılır
+  const togglePlay = async () => {
+    try {
+      const audio = audioRef.current;
+      if (!audio) return;
+
+      if (isPlaying) {
+        audio.pause(); // Çalıyorsa durdur
+      } else {
+        // Müzik tipine göre kaynak seç
+        audio.src = musicType === 'sabit' 
+          ? '/music/background.mp3'
+          : `http://localhost:8000/stream?t=${Date.now()}`;
+        await audio.play(); // Yeni stream'i başlat
+      }
+      setIsPlaying(!isPlaying); // Durumu tersine çevir
+    } catch (err) {
+      console.error('Playback error:', err);
+      setIsPlaying(false); // Hata durumunda çalma durumunu sıfırla
+    }
   };
+
+  // Müzik tipi değiştiğinde çalan müziği durdur
+  useEffect(() => {
+    if (isPlaying) {
+      const audio = audioRef.current;
+      if (audio) {
+        audio.pause();
+        setIsPlaying(false);
+      }
+    }
+  }, [musicType]);
 
   return (
     <div style={{
@@ -37,8 +77,23 @@ const MusicControls = () => {
       right: "20px",
       zIndex: 1000,
       display: "flex",
-      gap: "10px"
+      gap: "10px",
+      alignItems: "center"
     }}>
+      <select
+        value={musicType}
+        onChange={(e) => setMusicType(e.target.value)}
+        style={{
+          padding: "8px",
+          borderRadius: "4px",
+          border: "1px solid #ccc",
+          backgroundColor: "white",
+          cursor: "pointer"
+        }}
+      >
+        <option value="sabit">Sabit Müzik</option>
+        <option value="yaratim">Yaratım Müzik</option>
+      </select>
       <button
         onClick={togglePlay}
         style={{
@@ -84,19 +139,20 @@ const DraggableTodo = ({ todo, index, onDelete }) => {
         margin: "10px 0",
         border: "2px solid #ccc",
         borderRadius: "7px",
-        background: todo.status === "completed" ? "rgba(44, 122, 61, 0.9)" : todo.status === "in_progress" ? "rgba(240, 222, 64, 0.9)" : "rgba(222, 175, 228, 0.8)", // Duruma göre task arkaplan renk değişimi
+        background: todo.status === "completed" ? "rgba(44, 122, 61, 0.9)" : 
+                   todo.status === "in_progress" ? "rgba(240, 222, 64, 0.9)" : 
+                   "rgba(222, 175, 228, 0.8)", // Duruma göre task arkaplan renk değişimi
         opacity: isDragging ? 0.8 : 1,  // Sürükleme sırasında opaklık değişimi
         cursor: "move",
         display: "flex",
         justifyContent: "space-between",
         alignItems: "center",
-        color: "#333",
-        color: todo.status === "completed" ? "rgba(255, 255, 255)" : "rgba(0, 0, 0, 0.8)", // Task durumuna göre task yazı rengi değişimi
-        fontStyle: todo.status === "completed" ? "italic" : "normal", // Task durumuna göre task yazı stili değişimi
+        color: todo.status === "completed" ? "rgba(255, 255, 255)" : "rgba(0, 0, 0, 0.8)", // Task durumuna göre yazı rengi
+        fontStyle: todo.status === "completed" ? "italic" : "normal", // Task durumuna göre yazı stili
         fontWeight: "bold",
       }}
     >
-  <span>{todo.title}</span>
+      <span>{todo.title}</span>
       <button
         onClick={() => onDelete(todo.id)}
         style={{
@@ -158,24 +214,24 @@ const DroppableColumn = ({ status, todos, updateTodoStatus, onDelete }) => {
   );
 };
 
+// API endpoint'leri için sabitler
+const TODO_API_BASE = 'http://localhost:8080';  // Todo backend URL
+const MUSIC_API_BASE = 'http://localhost:8000'; // Müzik streaming backend URL
 
-// API base URL'ini çevre değişkeninden al
-const API_URL = 'http://localhost:8080';  // Direkt olarak URL'i belirtelim
-
-console.log('Backend URL:', API_URL); // Debug için URL'i loglayalım
+// Debug için URL'leri logla
+console.log('Todo Backend URL:', TODO_API_BASE);
+console.log('Music Backend URL:', MUSIC_API_BASE);
 
 // axios instance oluştur
 const api = axios.create({
-  baseURL: API_URL,
+  baseURL: TODO_API_BASE,
   headers: {
     'Content-Type': 'application/json',
     'Accept': 'application/json',
   },
-    // timeout değeri ekleyelim
-    timeout: 5000,
-    withCredentials: true
+  timeout: 5000, // 5 saniye timeout
+  withCredentials: true
 });
-
 
 // Debug için request interceptor
 api.interceptors.request.use(request => {
@@ -208,9 +264,9 @@ api.interceptors.response.use(
 // Ana uygulama bileşeni
 const App = () => {
   // State tanımlamaları
-  const [todos, setTodos] = useState([]);  // Todo listesi
-  const [newTodo, setNewTodo] = useState("");  // Yeni todo input'u
-  const [error, setError] = useState(null);  // Hata mesajı
+  const [todos, setTodos] = useState([]);     // Todo listesi
+  const [newTodo, setNewTodo] = useState(""); // Yeni todo input'u
+  const [error, setError] = useState(null);   // Hata mesajı
 
   // Sayfa yüklendiğinde todo'ları getir
   useEffect(() => {
@@ -220,7 +276,7 @@ const App = () => {
   // Todo'ları backend'den getiren fonksiyon
   const fetchTodos = async () => {
     try {
-      console.log('Fetching todos from:', API_URL + '/todos'); // Debug log
+      console.log('Fetching todos from:', TODO_API_BASE + '/todos'); // Debug log
       const response = await api.get("/todos");
       setTodos(response.data);
       setError(null);
@@ -249,7 +305,7 @@ const App = () => {
   // Todo durumunu güncelleme fonksiyonu
   const updateTodoStatus = async (id, status) => {
     try {
-      await api.put(`http://127.0.0.1:8080/todos/${id}`, { status });
+      await api.put(`/todos/${id}`, { status });
       fetchTodos();
       setError(null);
     } catch (err) {
@@ -258,10 +314,10 @@ const App = () => {
     }
   };
 
-  // Yeni eklenen silme fonksiyonu
+  // Todo silme fonksiyonu
   const deleteTodo = async (id) => {
     try {
-      await api.delete(`http://127.0.0.1:8080/todos/${id}`);
+      await api.delete(`/todos/${id}`);
       fetchTodos();
       setError(null);
     } catch (err) {
@@ -269,7 +325,6 @@ const App = () => {
       console.error("Failed to delete todo:", err);
     }
   };
-
 
   // Belirli bir duruma sahip todo'ları filtreleme
   const filteredTodos = (status) => todos.filter((todo) => todo.status === status);
@@ -284,14 +339,16 @@ const App = () => {
   return (
     <DndProvider backend={HTML5Backend}>
       <div style={{ padding: "20px" }}>
-      <MusicControls /> {/* Müzik kontrollerini ekle */}
+        <MusicControls /> {/* Müzik kontrollerini ekle */}
         <h1><b>ToDo App</b></h1>
+        
         {/* Todo ekleme formu */}
         <div style={{ marginBottom: "10px" }}>
           <input
             type="text"
             value={newTodo}
             onChange={(e) => setNewTodo(e.target.value)}
+            onKeyPress={handleKeyPress}
             placeholder="Add a new task"
             style={{ 
               padding: "8px",
@@ -309,7 +366,6 @@ const App = () => {
               backgroundColor: "#f3db06",
               color: "white",
               cursor: "pointer",
-              hover: "background-color:#f000"
             }}
           >
             Add
