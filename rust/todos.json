@@ -1,1 +1,146 @@
-[]
+[
+    {
+      "id": 1,
+      "title": "DM-RM Test Çalışması",
+      "status": "in_progress",
+      "description": ""
+    },
+    {
+      "id": 2,
+      "title": "PM Modül Çalışması Start",
+      "status": "todo",
+      "description": ""
+    },
+    {
+      "id": 3,
+      "title": "Süzer Tekstil Analiz",
+      "status": "in_progress",
+      "description": ""
+    },
+    {
+      "id": 4,
+      "title": "Eliar DF Ürün Bilgi Dokümanı",
+      "status": "in_progress",
+      "description": ""
+    },
+    {
+      "id": 5,
+      "title": "Eliar Cloud Ürün Bilgi Dokümanı",
+      "status": "in_progress",
+      "description": ""
+    },
+    {
+      "id": 6,
+      "title": "Eliar Veri Toplama Dokümanı",
+      "status": "in_progress",
+      "description": ""
+    },
+    {
+      "id": 7,
+      "title": "Teleskop Versus Çalışması",
+      "status": "in_progress",
+      "description": ""
+    },
+    {
+      "id": 8,
+      "title": "Marsala Veri Toplama Çalışması",
+      "status": "todo",
+      "description": ""
+    },
+    {
+      "id": 9,
+      "title": "Marsala Teleskop WEB Çalışması",
+      "status": "in_progress",
+      "description": ""
+    },
+    {
+      "id": 10,
+      "title": "Marsala DF V0.1 Çalışması",
+      "status": "in_progress",
+      "description": ""
+    },
+    {
+      "id": 11,
+      "title": "IM Modül Çalışması",
+      "status": "in_progress",
+      "description": ""
+    },
+    {
+      "id": 12,
+      "title": "Eliar LLM Platform Ürün Bilgi Dokümanı",
+      "status": "todo",
+      "description": ""
+    },
+    {
+      "id": 13,
+      "title": "Anomali Tespit Platformu Ürün Bilgi Dokümanı",
+      "status": "todo",
+      "description": ""
+    },
+    {
+      "id": 14,
+      "title": "Veri Toplama Platform Dokümanı",
+      "status": "in_progress",
+      "description": ""
+    },
+    {
+      "id": 15,
+      "title": "PS - DX Teleskop WEB Toplantısı",
+      "status": "completed",
+      "description": ""
+    },
+    {
+      "id": 16,
+      "title": "Weavers Demo Çalışması",
+      "status": "completed",
+      "description": ""
+    },
+    {
+      "id": 17,
+      "title": "Teleskop ve DF için PS KPI Çalışması",
+      "status": "todo",
+      "description": ""
+    },
+    {
+      "id": 18,
+      "title": "PP Modülü Çalışması",
+      "status": "in_progress",
+      "description": ""
+    },
+    {
+      "id": 19,
+      "title": "DM Modülü Phase 2 Dev",
+      "status": "in_progress",
+      "description": ""
+    },
+    {
+      "id": 20,
+      "title": "Aslı Tekstil Veri Toplama Şablonu Gönderimi",
+      "status": "completed",
+      "description": ""
+    },
+    {
+      "id": 21,
+      "title": "PPD Entegrasyon Planlama Toplantısı",
+      "status": "todo",
+      "description": ""
+    },
+    {
+      "id": 22,
+      "title": "PPD - Eliar MES Entegrasyon Toplantı - 1",
+      "status": "todo",
+      "description": ""
+    },
+    {
+      "id": 23,
+      "title": "Teleskop WEB için PS Dokümanı",
+      "status": "todo",
+      "description": ""
+    },
+    {
+      "id": 24,
+      "title": "test21",
+      "status": "todo",
+      "description": "XXXYYY"
+    }
+  ]

@@ -4,6 +4,7 @@ import { DndProvider, useDrag, useDrop } from "react-dnd";  // Sürükle-bırak 
 import { HTML5Backend } from "react-dnd-html5-backend";
 import { Play, Pause } from "lucide-react"; // Müzik kontrol ikonları için
 import { memo } from "react"; // Performans için bileşen memoization. Props değişmediğinde yeniden render yapmaz.
+import TodoDetailModal from './components/TodoDetailModal';
 
 // Müzik kontrolü bileşeni
 // Bu bileşen, sürekli çalan bir melodi için play/pause kontrolü sağlar
@@ -123,7 +124,7 @@ const ItemType = {
 };
 
 // Sürüklenebilir Todo bileşeni
-const DraggableTodo = ({ todo, index, onDelete }) => {
+const DraggableTodo = ({ todo, index, onDelete, onDetail }) => {
   // useDrag hook'u ile sürükleme özelliklerinin tanımlanması
   const [{ isDragging }, drag] = useDrag({
     type: ItemType.TODO,
@@ -154,28 +155,45 @@ const DraggableTodo = ({ todo, index, onDelete }) => {
         fontWeight: "bold",
       }}
     >
-      <span>{todo.title}</span>
-      <button
-        onClick={() => onDelete(todo.id)}
-        style={{
-          marginLeft: "10px",
-          backgroundColor: "#ff4444",
-          color: "white",
-          border: "none",
-          borderRadius: "4px",
-          padding: "4px 8px",
-          cursor: "pointer",
-          fontSize: "12px"
-        }}
-      >
-        Delete
-      </button>
+      <span style={{ flex: 1 }}>{todo.title}</span>
+      <div style={{ display: 'flex', gap: '8px', marginLeft: 'auto' }}>
+        <button
+          onClick={() => onDetail(todo.id)}
+          style={{
+            backgroundColor: "rgba(93, 47, 211, 0.8)",
+            color: "white",
+            border: "none",
+            borderRadius: "4px",
+            padding: "4px 8px",
+            cursor: "pointer",
+            fontSize: "12px",
+            marginLeft: "10px"
+          }}
+        >
+          Detail
+        </button>
+        
+        <button
+          onClick={() => onDelete(todo.id)}
+          style={{
+            backgroundColor: "#ff4444",
+            color: "white",
+            border: "none",
+            borderRadius: "4px",
+            padding: "4px 8px",
+            cursor: "pointer",
+            fontSize: "12px"
+          }}
+        >
+          Delete
+        </button>
+      </div>
     </div>
   );
 };
 
 // Bırakılabilir kolon bileşeni
-const DroppableColumn = ({ status, todos, updateTodoStatus, onDelete }) => {
+const DroppableColumn = ({ status, todos, updateTodoStatus, onDelete, onDetail }) => {
   // useDrop hook'u ile bırakma özelliklerinin tanımlanması
   const [{ isOver }, drop] = useDrop({
     accept: ItemType.TODO,
@@ -210,6 +228,7 @@ const DroppableColumn = ({ status, todos, updateTodoStatus, onDelete }) => {
           todo={todo} 
           index={index}
           onDelete={onDelete}
+          onDetail={onDetail}
         />
       ))}
     </div>
@@ -269,6 +288,9 @@ const App = () => {
   const [todos, setTodos] = useState([]);     // Todo listesi
   const [newTodo, setNewTodo] = useState(""); // Yeni todo input'u
   const [error, setError] = useState(null);   // Hata mesajı
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedTodoId, setSelectedTodoId] = useState(null);
+  const [selectedTodo, setSelectedTodo] = useState(null);
 
   // Sayfa yüklendiğinde todo'ları getir
   useEffect(() => {
@@ -304,17 +326,27 @@ const App = () => {
     }
   };
 
-  // Todo durumunu güncelleme fonksiyonu
-  const updateTodoStatus = async (id, status) => {
-    try {
-      await api.put(`/todos/${id}`, { status });
-      fetchTodos();
+  // updateTodoStatus fonksiyonunu güncelle
+const updateTodoStatus = async (id, status) => {
+  try {
+    const currentTodo = todos.find(t => t.id === id);
+    const updateData = {
+      status,
+      description: currentTodo.description // Mevcut description'ı koru
+    };
+
+    const response = await api.put(`/todos/${id}`, updateData);
+    
+    if (response.status === 200) {
+      await fetchTodos();
       setError(null);
-    } catch (err) {
-      setError(`Failed to update todo status: ${err.message}`);
-      console.error("Failed to update todo status:", err);
     }
-  };
+  } catch (err) {
+    const errorMessage = `Failed to update todo status: ${err.message}`;
+    setError(errorMessage);
+    console.error("Status update error:", err);
+  }
+};
 
   // Todo silme fonksiyonu
   const deleteTodo = async (id) => {
@@ -336,6 +368,74 @@ const App = () => {
     if (e.key === 'Enter') {
       addTodo();
     }
+  };
+
+  const handleDetailClick = async (todoId) => {
+    try {
+      // Güncel todo verisini backend'den al
+      const response = await api.get(`/todos/${todoId}`);
+      const todo = response.data;
+      console.log('Fetched todo for modal:', todo);
+      
+      setSelectedTodo(todo);
+      setSelectedTodoId(todoId);
+      setIsModalOpen(true);
+    } catch (err) {
+      console.error('Error fetching todo details:', err);
+      // Hata durumunda mevcut todo verisini kullan
+      const fallbackTodo = todos.find(t => t.id === todoId);
+      setSelectedTodo(fallbackTodo);
+      setSelectedTodoId(todoId);
+      setIsModalOpen(true);
+    }
+  };
+
+  // handleSaveDescription fonksiyonunu güncelle
+const handleSaveDescription = async (todoId, updates) => {
+  try {
+    console.log('App - Starting update for todo:', todoId, updates);
+
+    const currentTodo = todos.find(t => t.id === todoId);
+    if (!currentTodo) {
+      throw new Error('Todo not found');
+    }
+
+    const updateData = {
+      status: currentTodo.status,
+      description: updates.description
+    };
+
+    console.log('App - Sending update request:', updateData);
+
+    const response = await api.put(`/todos/${todoId}`, updateData);
+    
+    if (response.status === 200) {
+      // Önce state'i güncelle
+      const updatedTodo = response.data;
+      setTodos(prevTodos => 
+        prevTodos.map(todo => 
+          todo.id === todoId ? updatedTodo : todo
+        )
+      );
+
+      // Modal'ı kapat
+      setIsModalOpen(false);
+      
+      // Son olarak tüm listeyi yenile
+      await fetchTodos();
+      
+      setError(null);
+      console.log('App - Update successful');
+    }
+  } catch (err) {
+    console.error('App - Update error:', err);
+    setError(`Failed to update todo description: ${err.message}`);
+  }
+};
+
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+    setSelectedTodoId(null);
   };
 
   return (
@@ -397,9 +497,17 @@ const App = () => {
               todos={filteredTodos(status)}
               updateTodoStatus={updateTodoStatus}
               onDelete={deleteTodo}
+              onDetail={handleDetailClick}
             />
           ))}
         </div>
+        <TodoDetailModal
+          isOpen={isModalOpen}
+          onClose={handleCloseModal}
+          todoId={selectedTodoId}
+          todo={selectedTodo}
+          onSave={handleSaveDescription}
+        />
       </div>
     </DndProvider>
   );

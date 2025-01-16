@@ -16,11 +16,12 @@ const JSON_FILE_PATH: &str = "/app/data/todos.json";
 
 /// Todo yapısı
 /// Bir todo öğesinin sahip olduğu tüm özellikleri tanımlar
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 struct Todo {
     id: u32,            // Benzersiz tanımlayıcı
     title: String,      // Todo başlığı
     status: String,     // Todo durumu ("todo", "in_progress", "completed")
+    description: String,  // Her zaman Some("") olarak başlayacak
 }
 
 /// Uygulama durumu
@@ -83,10 +84,12 @@ fn load_todos() -> Vec<Todo> {
 /// 1. Todo'ları JSON formatına dönüştürür
 /// 2. Dosyayı oluşturur veya üzerine yazar
 /// 3. JSON verisini dosyaya yazar
-fn save_todos(todos: &Vec<Todo>) -> std::io::Result<()> {
+fn save_todos(todos: &[Todo]) -> std::io::Result<()> {
+    println!("Saving todos to file: {:?}", todos);
     let json = serde_json::to_string_pretty(todos)?;
     let mut file = fs::File::create(JSON_FILE_PATH)?;
     file.write_all(json.as_bytes())?;
+    println!("Successfully saved todos to file");
     Ok(())
 }
 
@@ -94,45 +97,43 @@ fn save_todos(todos: &Vec<Todo>) -> std::io::Result<()> {
 /// Web sunucusunu başlatır ve API endpoint'lerini yapılandırır
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
-    std::env::set_var("RUST_LOG", "actix_web=info");
+    std::env::set_var("RUST_LOG", "actix_web=debug"); // Log seviyesini debug'a çektik
     env_logger::init();
 
-      // Uygulama durumunu oluştur ve paylaşılabilir hale getir
     let state = web::Data::new(AppState {
         todos: Mutex::new(load_todos()),
     });
 
     println!("Server starting at http://0.0.0.0:8080");
     
-    // HTTP sunucusunu yapılandır ve başlat
     HttpServer::new(move || {
-        // CORS ayarlarını yapılandır - tüm origins, methods ve headers'a izin ver
         let cors = Cors::default()
-        .allowed_origin("http://localhost:5173")
-        .allowed_methods(vec!["GET", "POST", "PUT", "DELETE"])
-        .allowed_headers(vec![
-            header::CONTENT_TYPE,
-            header::ACCEPT,
-            header::ORIGIN,
-        ])
-        .supports_credentials()
-        .max_age(3600);
+            .allowed_origin("http://localhost:5173")
+            .allowed_methods(vec!["GET", "POST", "PUT", "DELETE"])
+            .allowed_headers(vec![
+                header::CONTENT_TYPE,
+                header::ACCEPT,
+                header::ORIGIN,
+            ])
+            .supports_credentials()
+            .max_age(3600);
 
         App::new()
             .wrap(cors)
             .wrap(Logger::default())
-              // Uygulama durumunu paylaş
             .app_data(state.clone())
             .service(
                 web::scope("/todos")
-                // API endpoint'lerini tanımla
-                    .route("", web::get().to(get_todos)) // Tüm todo'ları listele
-                    .route("", web::post().to(add_todo))  // Yeni todo ekle
-                    .route("/{id}", web::put().to(update_todo)) // Todo durumunu güncelle
-                    .route("/{id}", web::delete().to(delete_todo)) // Todo'yu sil
+                    // Spesifik endpoint'leri önce tanımla
+                    .route("/{id}", web::get().to(get_todo_by_id))  // GET /{id} önce gelmeli
+                    .route("/{id}", web::put().to(update_todo))
+                    .route("/{id}", web::delete().to(delete_todo))
+                    // Genel endpoint'ler sonda olmalı
+                    .route("", web::get().to(get_todos))
+                    .route("", web::post().to(add_todo))
             )
     })
-    .bind("0.0.0.0:8080")? // Sunucuyu localhost:8080'e bağla
+    .bind("0.0.0.0:8080")?
     .run()
     .await
 }
@@ -177,12 +178,15 @@ async fn add_todo(state: web::Data<AppState>, todo: web::Json<CreateTodo>) -> im
         .max()
         .unwrap_or(0) + 1;
     
-    // Yeni todo oluştur
+    // Yeni todo oluşturulurken boş description alanı ekle
     let new_todo = Todo {
         id: new_id,
         title: todo.title.clone(),
         status: "todo".to_string(),  // Başlangıç durumu
+        description: "".to_string(), // Boş string ile başlat
     };
+    
+    println!("Creating new todo: {:?}", new_todo);
     
     todos.push(new_todo);
     
@@ -196,9 +200,10 @@ async fn add_todo(state: web::Data<AppState>, todo: web::Json<CreateTodo>) -> im
 }
 
 /// Todo güncelleme için gelen verinin yapısı
-#[derive(Deserialize)]
+#[derive(Debug, Deserialize, Clone)]  // Debug trait'ini ekledik
 struct UpdateTodo {
-    status: String,  // Yeni durum
+    status: Option<String>,      // Status güncellemesi için
+    description: Option<String>, // Description güncellemesi için
 }
 
 /// Todo durumunu güncelleyen handler
@@ -217,22 +222,38 @@ struct UpdateTodo {
 async fn update_todo(
     state: web::Data<AppState>,
     id: web::Path<u32>,
-    todo: web::Json<UpdateTodo>,
+    update_data: web::Json<UpdateTodo>,
 ) -> impl Responder {
+    println!("Received update request: {:?}", update_data);
+    
     let mut todos = state.todos.lock().unwrap();
     let todo_id = id.into_inner();
     
     // Todo'yu ID'ye göre bul ve güncelle
     if let Some(existing_todo) = todos.iter_mut().find(|t| t.id == todo_id) {
-        existing_todo.status = todo.status.clone();
+        // Status güncellemesi
+        if let Some(status) = &update_data.status {
+            existing_todo.status = status.clone();
+            println!("Updated status to: {}", status);
+        }
         
-        // Değişiklikleri kaydet
+        // Description güncellemesi - boş string yerine None olmasını engelle
+        if let Some(description) = &update_data.description {
+            existing_todo.description = description.clone();
+            println!("Updated description to: {:?}", existing_todo.description);
+        }
+        
+        println!("Final todo state: {:?}", existing_todo);
+        
+        // Bu kısmı yorum satırından çıkarıyoruz
+        let updated_todo = existing_todo.clone();
         if let Err(e) = save_todos(&todos) {
             eprintln!("Error saving todos: {}", e);
             return HttpResponse::InternalServerError().finish();
         }
         
-        HttpResponse::Ok().finish()
+        // Güncellenmiş todo'yu JSON olarak dön
+        HttpResponse::Ok().json(updated_todo)
     } else {
         HttpResponse::NotFound().finish()
     }
@@ -270,5 +291,27 @@ async fn delete_todo(
         HttpResponse::Ok().finish()
     } else {
         HttpResponse::NotFound().finish()
+    }
+}
+
+// Tekil todo getirme handler'ı ekle
+async fn get_todo_by_id(
+    state: web::Data<AppState>,
+    id: web::Path<u32>,
+) -> impl Responder {
+    let todo_id = id.into_inner();
+    println!("GET request received for todo id: {}", todo_id);  // Debug log
+    
+    let todos = state.todos.lock().unwrap();
+    
+    match todos.iter().find(|t| t.id == todo_id) {
+        Some(todo) => {
+            println!("Found todo: {:?}", todo);  // Debug log
+            HttpResponse::Ok().json(todo)
+        }
+        None => {
+            println!("Todo not found with id: {}", todo_id);  // Debug log
+            HttpResponse::NotFound().json(format!("Todo with id {} not found", todo_id))
+        }
     }
 }
