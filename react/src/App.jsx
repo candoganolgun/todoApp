@@ -8,7 +8,8 @@ import TodoDetailModal from './components/TodoDetailModal';
 
 // Müzik kontrolü bileşeni
 // Bu bileşen, sürekli çalan bir melodi için play/pause kontrolü sağlar
-const MusicControls = () => {
+ // Kanvasların opacity değerinini değişimini takip eden state
+const MusicControls = ({ opacity, setOpacity }) => {
   // Çalma durumunu takip eden state
   const [isPlaying, setIsPlaying] = useState(false);
   const [musicType, setMusicType] = useState('sabit'); // 'sabit' veya 'yaratim'
@@ -49,9 +50,19 @@ const MusicControls = () => {
         audio.pause(); // Çalıyorsa durdur
       } else {
         // Müzik tipine göre kaynak seç
-        audio.src = musicType === 'sabit' 
-          ? '/music/background.mp3'
-          : `http://localhost:8000/stream?t=${Date.now()}`;
+        switch(musicType) {
+          case 'sabit':
+            audio.src = '/music/interseller.mp3';
+            break;
+          case 'sabit2':
+            audio.src = '/music/interseller2.mp3';
+            break;
+          case 'yaratim':
+            audio.src = `http://localhost:8000/stream?t=${Date.now()}`;
+            break;
+          default:
+            audio.src = '/music/interseller.mp3';
+        }
         await audio.play(); // Yeni stream'i başlat
       }
       setIsPlaying(!isPlaying); // Durumu tersine çevir
@@ -79,40 +90,83 @@ const MusicControls = () => {
       right: "20px",
       zIndex: 1000,
       display: "flex",
+      flexDirection: "column", // Dikey yerleşim
       gap: "10px",
-      alignItems: "center"
+      alignItems: "center",
+      backgroundColor: "rgba(0, 0, 0, 0.1)",
+      padding: "10px",
+      borderRadius: "8px",
+      width: "300px"
     }}>
-      <select
-        value={musicType}
-        onChange={(e) => setMusicType(e.target.value)}
-        style={{
-          padding: "8px",
-          borderRadius: "4px",
-          border: "1px solid #ccc",
-          backgroundColor: "black",
+      <div style={{
+        display: "flex",
+        gap: "10px",
+        alignItems: "center",
+        width: "100%"
+      }}>
+        <select
+          value={musicType}
+          onChange={(e) => setMusicType(e.target.value)}
+          style={{
+            padding: "8px",
+            borderRadius: "4px",
+            border: "1px solid #ccc",
+            backgroundColor: "black",
+            color: "white",
+            cursor: "pointer",
+            flex: 1
+          }}
+        >
+          <option value="sabit">Interseller</option>
+          <option value="sabit2">Interseller 2</option>
+          <option value="yaratim">Black Hole</option>
+        </select>
+        <button
+          onClick={togglePlay}
+          style={{
+            background: "none",
+            border: "none",
+            cursor: "pointer",
+            padding: "8px",
+            borderRadius: "50%",
+            backgroundColor: "#f3db06",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center"
+          }}
+        >
+          {isPlaying ? <Pause size={24} color="white" /> : <Play size={24} color="white" />}
+        </button>
+      </div>
+
+      {/* Opacity kontrol slider'ı */}
+      <div style={{
+        width: "100%",
+        display: "flex",
+        flexDirection: "column",
+        gap: "5px"
+      }}>
+        <label style={{
           color: "white",
-          cursor: "pointer"
-        }}
-      >
-        <option value="sabit" selected>Interseller</option>
-        <option value="yaratim">Black Hole</option>
-      </select>
-      <button
-        onClick={togglePlay}
-        style={{
-          background: "none",
-          border: "none",
-          cursor: "pointer",
-          padding: "8px",
-          borderRadius: "50%",
-          backgroundColor: "#f3db06",
+          fontSize: "12px",
           display: "flex",
-          alignItems: "center",
-          justifyContent: "center"
-        }}
-      >
-        {isPlaying ? <Pause size={24} color="white" /> : <Play size={24} color="white" />}
-      </button>
+          justifyContent: "space-between"
+        }}>
+          <span>Board Opacity: {opacity}%</span>
+        </label>
+        <input
+          type="range"
+          min="0"
+          max="100"
+          value={opacity}
+          onChange={(e) => setOpacity(Number(e.target.value))}
+          style={{
+            width: "100%",
+            height: "4px",
+            cursor: "pointer",
+          }}
+        />
+      </div>
     </div>
   );
 };
@@ -291,6 +345,7 @@ const App = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedTodoId, setSelectedTodoId] = useState(null);
   const [selectedTodo, setSelectedTodo] = useState(null);
+  const [boardOpacity, setBoardOpacity] = useState(80);
 
   // Sayfa yüklendiğinde todo'ları getir
   useEffect(() => {
@@ -402,7 +457,9 @@ const handleSaveDescription = async (todoId, updates) => {
 
     const updateData = {
       status: currentTodo.status,
-      description: updates.description
+      description: updates.description,
+      start_date: updates.startDate,  // Tarih alanlarını ekledik
+      end_date: updates.endDate
     };
 
     console.log('App - Sending update request:', updateData);
@@ -410,26 +467,22 @@ const handleSaveDescription = async (todoId, updates) => {
     const response = await api.put(`/todos/${todoId}`, updateData);
     
     if (response.status === 200) {
-      // Önce state'i güncelle
       const updatedTodo = response.data;
+      console.log('App - Received updated todo:', updatedTodo);
+      
       setTodos(prevTodos => 
         prevTodos.map(todo => 
           todo.id === todoId ? updatedTodo : todo
         )
       );
 
-      // Modal'ı kapat
       setIsModalOpen(false);
-      
-      // Son olarak tüm listeyi yenile
       await fetchTodos();
-      
       setError(null);
-      console.log('App - Update successful');
     }
   } catch (err) {
     console.error('App - Update error:', err);
-    setError(`Failed to update todo description: ${err.message}`);
+    setError(`Failed to update todo: ${err.message}`);
   }
 };
 
@@ -441,7 +494,10 @@ const handleSaveDescription = async (todoId, updates) => {
   return (
     <DndProvider backend={HTML5Backend}>
       <div style={{ padding: "20px" }}>
-        <MusicControls /> {/* Müzik kontrollerini ekle */}
+        <MusicControls 
+          opacity={boardOpacity} 
+          setOpacity={setBoardOpacity}
+        />
         <h1><b>ToDo App</b></h1>
         
         {/* Todo ekleme formu */}
@@ -487,7 +543,7 @@ const handleSaveDescription = async (todoId, updates) => {
           justifyContent: "space-around",
           gap: "20px",
           flexWrap: "wrap",
-          opacity: 0.8,
+          opacity: boardOpacity / 100, // opacity değerini 0-1 aralığına dönüştür
         }}>
           {/* Her durum için bir kolon oluşturma */}
           {["todo", "in_progress", "completed"].map((status) => (

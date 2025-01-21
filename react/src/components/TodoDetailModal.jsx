@@ -3,24 +3,34 @@ import { X, Save } from 'lucide-react';
 
 const TodoDetailModal = ({ isOpen, onClose, todoId, todo, onSave }) => {
   const [description, setDescription] = useState('');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
 
   useEffect(() => {
     console.log('Modal received todo:', todo);
     if (todo) {
-      const desc = todo.description || '';
-      console.log('Setting description to:', desc);
-      setDescription(desc);
+      setDescription(todo.description || '');
+      setStartDate(todo.start_date || '');  // backend'deki alan adlarına uygun olarak değiştirdik
+      setEndDate(todo.end_date || '');      // backend'deki alan adlarına uygun olarak değiştirdik
     } else {
       setDescription('');
+      setStartDate('');
+      setEndDate('');
     }
   }, [todo]);
 
   const handleSave = async () => {
     try {
-      console.log('TodoDetailModal - Saving description:', description);
-      await onSave(todoId, { description });
+      const updateData = {
+        description,
+        startDate: startDate || null,  // Boş string yerine null gönder
+        endDate: endDate || null       // Boş string yerine null gönder
+      };
+      
+      console.log('TodoDetailModal - Saving data:', updateData);
+      await onSave(todoId, updateData);
       console.log('TodoDetailModal - Save successful');
-      onClose(); // Başarılı kaydetme sonrası modal'ı kapat
+      onClose();
     } catch (error) {
       console.error('TodoDetailModal - Save failed:', error);
     }
@@ -37,7 +47,6 @@ const TodoDetailModal = ({ isOpen, onClose, todoId, todo, onSave }) => {
         left: 0,
         right: 0,
         bottom: 0,
-        backgroundColor: 'rgba(0, 0, 0, 0.7)',
         display: 'flex',
         justifyContent: 'center',
         alignItems: 'center',
@@ -46,7 +55,7 @@ const TodoDetailModal = ({ isOpen, onClose, todoId, todo, onSave }) => {
     >
       <div
         style={{
-          backgroundColor: 'white',
+          backgroundColor:'rgb(245, 245, 245)',
           borderRadius: '8px',
           padding: '20px',
           position: 'relative',
@@ -54,7 +63,7 @@ const TodoDetailModal = ({ isOpen, onClose, todoId, todo, onSave }) => {
           maxWidth: '800px',
           maxHeight: '500px',
           overflow: 'auto',
-          color: 'rgba(0, 0, 0, 0.7)',
+          color: 'rgba(0, 0, 0, 1)',
         }}
       >
         <div style={{ 
@@ -99,23 +108,76 @@ const TodoDetailModal = ({ isOpen, onClose, todoId, todo, onSave }) => {
         <div style={{ marginTop: '10px' }}>
           <h2>Todo Details</h2>
           <p><strong>Title:</strong> {todo?.title}</p>
-          <div style={{ marginTop: '20px' }}>
-            <label style={{ display: 'block', marginBottom: '10px' }}>
-              <p><strong>Description:</strong></p>
-            </label>
-            <textarea
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              style={{
-                width: '50%',
-                height: '200px',
-                padding: '10px',
-                borderRadius: '4px',
-                border: '1px solid #ccc',
-                resize: 'vertical'
-              }}
-              placeholder="Enter todo description..."
-            />
+          <div style={{ 
+            marginTop: '20px',
+            display: 'flex',
+            gap: '20px'
+          }}>
+            {/* Sol taraf - Description */}
+            <div style={{ flex: '1' }}>
+              <label style={{ display: 'block', marginBottom: '10px'}}>
+                <p><strong>Description:</strong></p>
+              </label>
+              <textarea
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                style={{
+                  width: '100%',
+                  height: '200px',
+                  padding: '10px',
+                  borderRadius: '4px',
+                  border: '1px solid #ccc',
+                  resize: 'vertical'
+                }}
+                placeholder="Enter todo description..."
+              />
+            </div>
+
+            {/* Sağ taraf - Tarih seçimleri */}
+            <div style={{ 
+              width: '300px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '20px',
+              marginLeft: '20px',
+              marginTop: '10px'
+            }}>
+              <div>
+                <label style={{ display: 'block', marginBottom: '10px' }}>
+                  <strong>Planlanan Başlangıç Tarihi:</strong>
+                </label>
+                <input
+                  type="date"
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                  style={{
+                    width: '80%',
+                    padding: '8px',
+                    borderRadius: '4px',
+                    border: '1px solid #ccc',
+                    position: 'center'
+                  }}
+                />
+              </div>
+              
+              <div>
+                <label style={{ display: 'block', marginBottom: '10px' }}>
+                  <strong>Planlanan Bitiş Tarihi:</strong>
+                </label>
+                <input
+                  type="date"
+                  value={endDate}
+                  onChange={(e) => setEndDate(e.target.value)}
+                  style={{
+                    width: '80%',
+                    padding: '8px',
+                    borderRadius: '4px',
+                    border: '1px solid #ccc',
+                    position: 'center'
+                  }}
+                />
+              </div>
+            </div>
           </div>
         </div>
       </div>

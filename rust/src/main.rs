@@ -22,6 +22,8 @@ struct Todo {
     title: String,      // Todo başlığı
     status: String,     // Todo durumu ("todo", "in_progress", "completed")
     description: String,  // Her zaman Some("") olarak başlayacak
+    start_date: String,    // Yeni alan
+    end_date: String,      // Yeni alan
 }
 
 /// Uygulama durumu
@@ -184,6 +186,8 @@ async fn add_todo(state: web::Data<AppState>, todo: web::Json<CreateTodo>) -> im
         title: todo.title.clone(),
         status: "todo".to_string(),  // Başlangıç durumu
         description: "".to_string(), // Boş string ile başlat
+        start_date: "".to_string(),          // Yeni alan
+        end_date: "".to_string(),            // Yeni alan
     };
     
     println!("Creating new todo: {:?}", new_todo);
@@ -204,6 +208,8 @@ async fn add_todo(state: web::Data<AppState>, todo: web::Json<CreateTodo>) -> im
 struct UpdateTodo {
     status: Option<String>,      // Status güncellemesi için
     description: Option<String>, // Description güncellemesi için
+    start_date: Option<String>,    // Yeni alan
+    end_date: Option<String>,      // Yeni alan
 }
 
 /// Todo durumunu güncelleyen handler
@@ -241,6 +247,15 @@ async fn update_todo(
         if let Some(description) = &update_data.description {
             existing_todo.description = description.clone();
             println!("Updated description to: {:?}", existing_todo.description);
+        }
+        
+        // Tarih güncellemeleri
+        if let Some(start_date) = &update_data.start_date {
+            existing_todo.start_date = start_date.clone();
+        }
+        
+        if let Some(end_date) = &update_data.end_date {
+            existing_todo.end_date = end_date.clone();
         }
         
         println!("Final todo state: {:?}", existing_todo);
